@@ -15,6 +15,7 @@ use app\models\DetailRawatInap;
 use app\models\DetailRawatJalan;
 use app\models\DetailIrd;
 use app\models\Tpelayanan;
+use app\models\JadwalOperasi;
 
 class ApiController extends Controller
 {
@@ -71,6 +72,48 @@ class ApiController extends Controller
 
 
         return Json::encode($arr_json);
+    }
+
+    public function actionGetpasien(){
+        $connection = Yii::$app->getDb();
+        $command = $connection->createCommand('SELECT a.`KodeBangsal`, d.`Ruang`, a.`NomorRM`, UPPER(c.`NamaPasien`) AS NamaPasien,  DATE_FORMAT(b.`data_input`, "%d-%m-%Y %k:%i:%s") AS data_input, c.`JK` AS jk   FROM `detailpelayananbangsal` a INNER JOIN `headerpelayananbangsal` b ON (a.`NomorRM`=b.`NomorRM` AND a.`Kunjungan`=b.`Kunjungan`)
+                    INNER JOIN `dataindukpasien` c ON b.`NomorRM` =  c.`NomorRM`
+                    INNER JOIN `tabelruang` d ON a.`KodeBangsal`= d.`KodeRuang`
+                    WHERE  a.`Status` = 1 AND b.`KodeDokter`IN ("171") 
+                    ORDER BY  d.`Ruang` ASC,  b.`data_input` DESC');
+
+        $result['data'] = $command->queryAll();
+        return Json::encode($result);
+
+    }
+
+    public function actionJadwaloperasi(){
+        $result = array();
+        $model = JadwalOperasi::find()->where(['status_delete'=>0])->andWhere(['>=','tgl_operasi',date('Y-m-d').' 00:00:00'])->all();
+
+        if($model != null){
+            foreach($model as $val){
+               $result['data'][] = array(
+                    'id'=>$val->id_jadwaloperasi,
+                    'tanggalop'=>date('d-m-Y H:i', strtotime($val->tgl_operasi)),
+                    'rm'=>$val->NomorRM, 
+                    'tgl_lahir'=>date('d-m-Y', strtotime($val->datainduk->TglLahir)),
+                    'kunjungan'=>$val->Kunjungan,
+                    'nama'=>$val->datainduk->NamaPasien,
+                    'asalruang'=>$val->asalruang->Ruang,
+                    'ruang'=>$val->kamarop->nama_kamaroperasi,
+                    'dokter1'=>$val->dokter1->Nama,
+                    'dokter2'=>$val->dokter2->Nama,
+                    'dokter3'=>$val->dokter3->Nama,
+                    'keterangan'=>$val->keterangan,
+                    'diagnosa'=>$val->diagnosa,
+                    'info'=>$val->info
+               );
+            }
+            
+        }
+        return Json::encode($result);
+
     }
 
     
